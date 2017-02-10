@@ -9,6 +9,7 @@ Screen-camera calibration means localizing the screen position in the camera’s
 ## Requirements
 * Unity 3D (5.3.3)
 * Kinect 2 
+* Kinect 2 SDK
 * Microsoft Windows
 
 ## Usage
