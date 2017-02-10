@@ -9,30 +9,34 @@ using UnityEngine.UI;
 
 public class KinectCalibrator : MonoBehaviour
 {
-    //Kinect sensor
     private KinectSensor kinectSensor;
     private int bodyCount;
     private Body[] bodies;
     private FaceFrameSource[] faceFrameSources;
     private FaceFrameReader[] faceFrameReaders;
 
+    [HideInInspector]
     public Text DbgDistance;
+    [HideInInspector]
+    public Text LogInformation;
 
+    [HideInInspector]
     public GameObject bodyManager;
 
+    [HideInInspector]
     public GameObject cube;
+    [HideInInspector]
     public GameObject[] joints = new GameObject[26];
-    //public GameObject handHeadPointer;
+
+    [HideInInspector]
     public GameObject handEyePointer;
+    [HideInInspector]
     public GameObject menu;
-    public float monitorHeight;
-    public float monitorWidth;
 
     /** LPF **/
     float[] smoothedValM2 = new float[4];
     float[] smoothedValM3 = new float[4];
     float filterValM2, filterValM3;
-
 
     /** LM **/
     private TF handHeadWrtKinectTf;
@@ -45,15 +49,26 @@ public class KinectCalibrator : MonoBehaviour
     Dictionary<int, List<TF>> handHeadLines = new Dictionary<int, List<TF>>();
     Dictionary<int, List<GameObject>> handPointers = new Dictionary<int, List<GameObject>>();
 
-    public int Lines_per_corner = 10;
+    /* Parameters */
+    [Header("Screen size")]
+    public float monitorHeight;
+    public float monitorWidth;
+    [Header("Ransac parameters")]
     public float Ransac_Threshold = 0.01f;
     public double Ransac_Probability = 0.95;
-
+    [Header("Calibration parameter")]
+    public int Lines_per_corner = 10;
     public Vector3 UpperLeftGuessWrtKinect;
 
+    [HideInInspector]
     public Material inlierMat;
 
     enum MonitorCorner { UPPER_LEFT_CORNER = 0, UPPER_RIGHT_CORNER = 1, BOTTOM_LEFT_CORNER = 2, BOTTOM_RIGHT_CORNER = 3, CENTER = 4 };
+
+    private void doLog(string s)
+    {
+        LogInformation.text = s;
+    }
 
     void Start()
     {
@@ -75,7 +90,6 @@ public class KinectCalibrator : MonoBehaviour
         kinectSensor = KinectSensor.GetDefault();
         // set the maximum number of bodies that would be tracked by Kinect
         bodyCount = kinectSensor.BodyFrameSource.BodyCount;
-        //bodyCount = 1;
 
         // allocate storage to store body objects
         bodies = new Body[bodyCount];
@@ -83,22 +97,23 @@ public class KinectCalibrator : MonoBehaviour
         // specify the required face frame results
         FaceFrameFeatures faceFrameFeatures =
             FaceFrameFeatures.BoundingBoxInColorSpace
-                | FaceFrameFeatures.PointsInColorSpace
-                | FaceFrameFeatures.BoundingBoxInInfraredSpace
-                | FaceFrameFeatures.PointsInInfraredSpace
-                | FaceFrameFeatures.RotationOrientation
-                | FaceFrameFeatures.FaceEngagement
-                | FaceFrameFeatures.Glasses
-                | FaceFrameFeatures.Happy
-                | FaceFrameFeatures.LeftEyeClosed
-                | FaceFrameFeatures.RightEyeClosed
-                | FaceFrameFeatures.LookingAway
-                | FaceFrameFeatures.MouthMoved
-                | FaceFrameFeatures.MouthOpen;
+            | FaceFrameFeatures.PointsInColorSpace
+            | FaceFrameFeatures.BoundingBoxInInfraredSpace
+            | FaceFrameFeatures.PointsInInfraredSpace
+            | FaceFrameFeatures.RotationOrientation
+            | FaceFrameFeatures.FaceEngagement
+            | FaceFrameFeatures.Glasses
+            | FaceFrameFeatures.Happy
+            | FaceFrameFeatures.LeftEyeClosed
+            | FaceFrameFeatures.RightEyeClosed
+            | FaceFrameFeatures.LookingAway
+            | FaceFrameFeatures.MouthMoved
+            | FaceFrameFeatures.MouthOpen;
 
         // create a face frame source + reader to track each face in the FOV
         faceFrameSources = new FaceFrameSource[bodyCount];
         faceFrameReaders = new FaceFrameReader[bodyCount];
+
         for (int i = 0; i < bodyCount; i++)
         {
             // create the face frame source with the required face frame features and an initial tracking Id of 0
@@ -109,20 +124,19 @@ public class KinectCalibrator : MonoBehaviour
         }
 
         /** END-KINECT **/
-
         for (int i = 0; i < 26; ++i)
         {
             joints[i] = GameObject.Instantiate(cube);
         }
 
-
         menu.SetActive(true);
-
+        doLog("Kinect sensor initialized, ready to go");
     }
 
     public void doCalibration()
     {
         menu.SetActive(false);
+        doLog("New corner: " + ((MonitorCorner)currentCorner).ToString() + " " + (Lines_per_corner - counter).ToString() + " left");
     }
 
     // Update is called once per frame
@@ -184,22 +198,19 @@ public class KinectCalibrator : MonoBehaviour
                                 kinectSensor.CoordinateMapper.MapColorFrameToCameraSpace(rawDepthPixelData, cameraPoints);
                                 var eyeWorldCoordinate = cameraPoints[(int)eyePosition.Y * colorFrameDescription.Width + (int)eyePosition.X];
 
-                                //Debug.Log(new Vector3(-eyeWorldCoordinate.X, eyeWorldCoordinate.Y, eyeWorldCoordinate.Z));
-
                                 joints[25].transform.name = FacePointType.EyeRight.ToString();
                                 joints[25].transform.position = new Vector3(-eyeWorldCoordinate.X, eyeWorldCoordinate.Y, eyeWorldCoordinate.Z);
                                 joints[25].GetComponent<Renderer>().material.color = UnityEngine.Color.red;
 
-                                DbgDistance.text = "" + eyeWorldCoordinate.Z;
+                                DbgDistance.text = "Distance z (right eye): " + eyeWorldCoordinate.Z + " (m)";
 
                                 Vector3 hand = joints[(int)JointType.HandTipLeft].transform.position;
                                 Vector3 head = joints[(int)JointType.Head].transform.position;   //HEAD
                                 Vector3 eye = joints[25].transform.position; //EYE_RIGHT
 
                                 TF handHeadUnityTf = computeHandPointerTransform(hand, head, true, 0, true);
-                                //handHeadUnityTf.setToGameObject(ref handHeadPointer);
-
                                 TF handEyeUnityTf = computeHandPointerTransform(hand, eye, true, 1, true);
+
                                 handEyeUnityTf.setToGameObject(ref handEyePointer);
 
                                 /** handPointer w.r.t. kinect (right-handed) **/
@@ -215,6 +226,7 @@ public class KinectCalibrator : MonoBehaviour
                                 depthFrame.Dispose();
                                 depthFrame = null;
                             }
+
                             colorFrame.Dispose();
                             colorFrame = null;
                         }
@@ -261,10 +273,6 @@ public class KinectCalibrator : MonoBehaviour
         }
         else
         {
-            //Quaternion r = Quaternion.Euler(0, Mathf.Rad2Deg * Mathf.Atan(m2), 0);
-            //Quaternion r2 = Quaternion.Euler(Mathf.Rad2Deg * Mathf.Atan(m3), 0, 0);
-            //r = r * r2;
-            //tf.rotation = r2;
             tf.rotation = Quaternion.Euler(Mathf.Rad2Deg * Mathf.Atan(m3), Mathf.Rad2Deg * Mathf.Atan(m2), 0);
         }
 
@@ -285,11 +293,11 @@ public class KinectCalibrator : MonoBehaviour
         if (currentCorner == 4)
         {
             /** Find intersection with least mean squared **/
-            //FindIntersection();
             LinesIntersectionResult result_no_ransac, result_ransac;
             Vector3 guessUL = new Vector3(0, 0, 0);
             List<Vector3> cornerNoRansacWrtKinect = new List<Vector3>();
             List<Vector3> cornerRansacWrtKinect = new List<Vector3>();
+
             for (int i = 0; i < 4; ++i)
             {
                 MonitorCorner mc_ref = (MonitorCorner)i;
@@ -345,8 +353,8 @@ public class KinectCalibrator : MonoBehaviour
             plane.Set3Points(cornerNoRansacWrtKinect[0], cornerNoRansacWrtKinect[1], cornerNoRansacWrtKinect[3]);
             float pitch = Mathf.Rad2Deg * (Mathf.Acos(Vector3.Dot(Vector3.right, plane.normal)) - (Mathf.PI / 2));
             float roll = Mathf.Rad2Deg * (Mathf.Acos(Vector3.Dot(Vector3.up, plane.normal)) - (Mathf.PI / 2));
-            //float yaw = Vector3.Angle(Vector3.forward, plane.normal);
             float yaw = Mathf.Atan2((cornerNoRansacWrtKinect[1].y - cornerNoRansacWrtKinect[0].y), (cornerNoRansacWrtKinect[1].x - (cornerNoRansacWrtKinect[0].x))) * Mathf.Rad2Deg;
+
             //DO LM without outliers detection
             plane = new Plane();
             plane.Set3Points(cornerNoRansacWrtKinect[0], cornerNoRansacWrtKinect[1], cornerNoRansacWrtKinect[3]);
@@ -405,7 +413,9 @@ public class KinectCalibrator : MonoBehaviour
                 {
                     guessUL = result_ransac.intersection;
                 }
+
                 makeInlierVisible(i, result_ransac.inliersIndexes);
+
                 foreach (var inlierIndex in result_ransac.inliersIndexes)
                 {
                     inliersLines[i].Add(handEyeLines[i][inlierIndex]);
@@ -474,7 +484,7 @@ public class KinectCalibrator : MonoBehaviour
             IniFile.IniWriteValue("OPTIMIZE_CORNERS_POSITION_RANSAC (Estimated Guess)", "ANGLE_DEG_Z", resultLM.rotation.eulerAngles[2].ToString());
 
             menu.SetActive(true);
-
+            doLog("Calibration done");
             return;
         }
 
@@ -486,12 +496,22 @@ public class KinectCalibrator : MonoBehaviour
             handHeadLines[currentCorner].Add(handHeadWrtKinectTf);
             handEyeLines[currentCorner].Add(handEyeWrtKinectTf);
 
+            doLog(((MonitorCorner)currentCorner).ToString() + ": " + (Lines_per_corner - counter).ToString() + " left");
             counter++;
         }
         else
         {
             currentCorner++;
             counter = 0;
+
+            if (currentCorner == (int)MonitorCorner.CENTER)
+            {
+                doLog("Press enter to start corners estimation");
+            }
+            else
+            {
+                doLog("New corner: " + ((MonitorCorner)currentCorner).ToString() + " " + (Lines_per_corner - counter).ToString() + " left");
+            }
             Debug.Log("New Corner -> " + ((MonitorCorner)currentCorner).ToString());
         }
     }
