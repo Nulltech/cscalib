@@ -33,8 +33,8 @@ In *KinectCalibrator* game object you must define six parameters in order to ach
 The calibration results is subdivided as follow:
 
 * **CORNERS_POSITION_WITHOUT_RANSAC**: screen corners position estimated with SSD (Sum of Square Differences) without outliers rejection
-* **OPTIMIZE_CORNERS_POSITION_WITHOUT_RANSAC (User Guess)**: screen corners position estimated after Levenberg–Marquardt algorithm initialized with user UpperLeft Corner guess. The set of corner lines should contains outliers.
+* **OPTIMIZE_CORNERS_POSITION_WITHOUT_RANSAC (User Guess)**: screen corners position estimated after Levenberg–Marquardt algorithm initialized with user UpperLeft Corner guess. The set of corner lines should contains outliers
 * **OPTIMIZE_CORNERS_POSITION_WITHOUT_RANSAC (Estimated Guess)**: screen corners position estimated after Levenberg–Marquardt algorithm initialized with automatic best guess estimation. The set of corner lines should contains outliers.
-* **CORNERS_POSITION_RANSAC**: screen corners position estimated with RANSAC algorithm with outliers rejection.
-* **OPTIMIZE_CORNERS_POSITION_RANSAC (User Guess)**: screen corners position estimated after Levenberg–Marquardt algorithm initialized with user UpperLeft Corner guess. The set of corner lines doesn't contain outliers.
-* **OPTIMIZE_CORNERS_POSITION_RANSAC (Estimated Guess)**: screen corners position estimated after Levenberg–Marquardt algorithm initialized with automatic best guess estimation. The set of corner lines doesn't contain outliers.
+* **CORNERS_POSITION_RANSAC**: screen corners position estimated with RANSAC algorithm with outliers rejection
+* **OPTIMIZE_CORNERS_POSITION_RANSAC (User Guess)**: screen corners position estimated after Levenberg–Marquardt algorithm initialized with user UpperLeft Corner guess. The set of corner lines doesn't contain outliers
+* **OPTIMIZE_CORNERS_POSITION_RANSAC (Estimated Guess)**: screen corners position estimated after Levenberg–Marquardt algorithm initialized with automatic best guess estimation. The set of corner lines doesn't contain outliers
